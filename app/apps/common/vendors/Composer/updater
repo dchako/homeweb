@@ -1,0 +1,31 @@
+#!/bin/bash
+exit 0
+# this is just a utility to pack composer packages without conflicting with the document root .git
+
+DOCUMENT_ROOT="$( cd "$( dirname "$0" )" && pwd )"
+PATHS[0]="$DOCUMENT_ROOT/vendor/chrisboulton/php-resque"
+PATHS[1]="$DOCUMENT_ROOT/vendor/mtdowling/cron-expression"
+PATHS[2]="$DOCUMENT_ROOT/vendor/phpseclib/phpseclib"
+
+for i in "${PATHS[@]}"
+do
+    if [ -d "$i" ]; then 
+        printf "%s" "removing $i -> "
+        rm -rf "$i"
+        printf "%s\n" "done."
+    fi
+done
+
+# update composer
+composer self-update && composer update
+
+# remove the .git
+for i in "${PATHS[@]}"
+do
+    if [ -d "$i/.git" ]; then
+        printf "%s" "removing $i/.git -> "
+        rm -rf "$i/.git"
+        rm -rf "$i/.gitignore"
+        printf "%s\n" "done."
+    fi
+done
