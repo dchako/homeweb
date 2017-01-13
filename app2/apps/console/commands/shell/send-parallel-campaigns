@@ -1,0 +1,234 @@
+#!/bin/bash
+
+##
+# This file is part of the MailWizz EMA application.
+#
+# @package MailWizz EMA
+# @author Serban George Cristian <cristian.serban@mailwizz.com>
+# @link http://www.mailwizz.com/
+# @copyright 2013-2016 MailWizz EMA (http://www.mailwizz.com)
+# @license http://www.mailwizz.com/license/
+# @since 1.0
+#
+##
+
+printf "%s\n" "Waiting 2 seconds to init..."
+sleep 2
+
+# full path to the command dir
+DIR="$( cd "$( dirname "$0" )" && pwd )"
+
+# name of this file
+FILE_NAME="$( basename "$0" )"
+
+# full path with file
+COMMAND_FILE_PATH="$DIR/$FILE_NAME"
+
+if [ ! -f "$COMMAND_FILE_PATH" ]; then
+    printf "%s\n" "Cannot find correct command: $COMMAND_FILE_PATH"
+    exit 1
+fi
+
+# make sure we move in the working directory
+cd $DIR
+
+# console init path
+CONSOLE_PATH="$( cd ../../ && pwd )/console.php"
+
+# command line arguments
+PHP_PATH="/usr/bin/php"
+# show the help context
+help=0
+# regular or autoresponder or empty string for both
+campaigns_type=""
+# how many processes to spawn
+processes_cnt=0
+# how many seconds to sleep between each process
+sleep_sec=0
+
+# flag for binary search
+LOOKED_FOR_PHP=0
+
+# arguments init
+while getopts h:t:c:p:s: opt; do
+  case $opt in
+  h)
+      help=$OPTARG
+      ;;
+  s)
+      sleep_sec=$OPTARG
+      ;;
+  t)
+      campaigns_type=$OPTARG
+      ;;
+  c)
+      processes_cnt=$OPTARG
+      ;;
+  p)
+      PHP_PATH=$OPTARG
+      LOOKED_FOR_PHP=1
+      ;;
+  esac
+done
+
+shift $((OPTIND - 1))
+
+# help is available in all cases
+if [ $help -eq 1 ]; then
+    printf "%s\n" "---------------------------------------------------------------"
+    printf "%s\n" "| Usage: ./"$FILE_NAME" -s 5 -c 100 -p /usr/bin/php-cli        "
+    printf "%s\n" "| To force PHP CLI binary :                                    "
+    printf "%s\n" "| ./"$FILE_NAME" -p /path/to/php-cli/binary                    "
+    printf "%s\n" "| To force the number of processes :                           "
+    printf "%s\n" "| ./"$FILE_NAME" -c 100                                        "
+    printf "%s\n" "| To force the number of sleep seconds between processes :     "
+    printf "%s\n" "| ./"$FILE_NAME" -s 5                                          "
+    printf "%s\n" "| To force sending only regular campaigns :                    "
+    printf "%s\n" "| ./"$FILE_NAME" -t regular                                    "
+    printf "%s\n" "| To force sending only autoresponder campaigns :              "
+    printf "%s\n" "| ./"$FILE_NAME" -t autoresponder                              "
+    printf "%s\n" "---------------------------------------------------------------"
+    exit 0
+fi
+
+printf "%s\n" "Looking for php binary..."
+if [ "$PHP_PATH" ] && [ ! -f "$PHP_PATH" ] && [ "$LOOKED_FOR_PHP" -eq 0 ]; then
+    php_variants=( "php-cli" "php5-cli" "php5" "php" )
+    LOOKED_FOR_PHP=1
+
+    for i in "${php_variants[@]}"
+    do
+        command -v $i >/dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            PHP_PATH="$(command -v $i)"
+            break
+        fi
+    done
+fi
+
+if [ ! "$PHP_PATH" ] || [ ! -f "$PHP_PATH" ]; then
+    printf "%s\n" "Cannot find a valid php binary"
+    exit 1
+fi
+
+printf "%s\n" "Found a valid php binary at $PHP_PATH"
+
+# check provided campaigns type
+allowed_campaign_types=( "regular" "autoresponder" )
+campaigns_type_valid=0
+if [ "$campaigns_type" != "" ]; then
+    for i in "${allowed_campaign_types[@]}"
+    do
+        if [ "$campaigns_type" == "$i" ]; then
+            campaigns_type_valid=1
+            break;
+        fi
+    done
+    if [ $campaigns_type_valid -ne 1 ]; then
+        campaigns_type=""
+    fi
+fi
+
+# lock data
+LOCK_BASE_PATH="$( cd ../../../common/runtime && pwd )/shell-pids"
+LOCK_PATH="$LOCK_BASE_PATH/send-campaigns-daemon.pid"
+
+if [ "$campaigns_type" != "" ]; then
+    LOCK_PATH="$LOCK_BASE_PATH/send-$campaigns_type-campaigns-daemon.pid"
+fi
+
+# function to remove the lock file
+function remove_lock {
+    if [ -d "$LOCK_PATH" ]; then
+        rmdir "$LOCK_PATH" > /dev/null 2>&1
+        printf "%s\n" "Cleanup complete, removed the lock at $LOCK_PATH"
+    fi
+    exit 0
+}
+
+# create the base directory if does not exists
+if [ ! -d "$LOCK_BASE_PATH" ]; then
+    if ! mkdir -p "$LOCK_BASE_PATH" > /dev/null 2>&1; then
+        printf "%s\n" "Cannot create $LOCK_BASE_PATH"
+        exit 1
+    fi
+fi
+
+process_running=0
+if mkdir "$LOCK_PATH" > /dev/null 2>&1; then
+    process_running=0
+else
+    process_running=1
+fi
+
+printf "%s\n" "Checking to see if there is another instance of this process running"
+
+if [ $process_running -eq 1 ]; then
+    printf "%s\n" "Another instance of the process is already running or there is a stale pid file at $LOCK_PATH"
+    exit 0
+fi
+
+printf "%s\n" "There is no other instance of this process running, created the lock file $LOCK_PATH"
+
+# trap. see kill -l for available signals
+trap "remove_lock" 1 2 3 9 15
+
+# load options from app
+SET_OPTION_COMMAND="$PHP_PATH -q $CONSOLE_PATH option set_option --name=%s --value=%s"
+GET_OPTION_COMMAND="$PHP_PATH -q $CONSOLE_PATH option get_option --name=%s --default=%s"
+app_status="$(printf "$GET_OPTION_COMMAND" "system.common.site_status" "offline")"
+app_status=$($app_status)
+
+if [ "$app_status" != "online" ]; then
+    printf "%s\n" "The application is offline, waiting for it to go online to proceed!"
+    remove_lock
+    exit 0
+fi
+
+# command placeholder
+COMMAND="$PHP_PATH -q $CONSOLE_PATH send-campaigns "
+
+# split the command vars for easier reading
+COMMAND_VARS[0]='--campaigns_offset=%d '
+COMMAND_VARS[1]='--campaigns_limit=%d '
+COMMAND_VARS[2]='--campaigns_type=%s '
+
+for i in "${COMMAND_VARS[@]}"
+do
+    COMMAND="$COMMAND $i"
+done
+
+processes_count=15
+if [ $processes_cnt -gt 0 ]; then
+    processes_count=$processes_cnt
+fi
+
+sleep_seconds=5
+if [ $sleep_sec -gt 1 ]; then
+    sleep_seconds=$sleep_sec
+fi
+
+i=0
+printf "%s\n" "Starting background processes..."
+while [ $i -lt "$processes_count" ]
+do
+    i=$(( $i + 1 ))
+    CMD=$(printf "$COMMAND" 0 1 $campaigns_type)
+    $CMD >/dev/null 2>&1 &
+    printf "#%d sent in background\n" $i
+    sleep $sleep_seconds
+done
+
+printf "%s\n" "Waiting for background processes to finish..."
+wait
+printf "%s\n" "Done waiting, all background processes are done!"
+
+printf "\n%s\n" "Sending a new process in background..."
+$COMMAND_FILE_PATH -s "$sleep_seconds" -c "$processes_count" -t "$campaigns_type" -p "$PHP_PATH" >/dev/null 2>&1 &
+printf "%s\n" "The new process has been sent in background."
+
+printf "%s\n" "Removing the existing lock for this process."
+remove_lock
+
+# remove_lock will exit anyway
+exit 0
