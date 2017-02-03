@@ -44,7 +44,8 @@ if ($viewCollection->renderContent) {
         $form = $this->beginWidget('CActiveForm');
         ?>
         <div class="login-box-body">
-            <p class="login-box-msg"><?php echo Yii::t('users', 'Sign in to start your session');?></p>
+            <div style='width: 400px;height: 200px;/*! background-image: ; */background-color: red;padding-left: 0px;margin-left: -20px;margin-top: -20px;margin-right: -20px;padding-right: -20px;background-image: url("http://www.mailclick.com.ar/img/login.png");'></div>
+            <p class="login-box-msg" style="padding: 20px 20px 20px;"><?php echo Yii::t('users', 'Acceso Usuarios');?></p>
             <?php
             /**
              * This hook gives a chance to prepend content before the active form fields.
