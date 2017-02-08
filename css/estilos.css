@@ -1,0 +1,161 @@
+
+.fondoGris{
+    background: #DCDCDC;
+}
+
+.isqTexto{
+    text-align: left;
+   padding-bottom: 10px;
+    padding-right: 55px;
+
+}
+
+.ir-arriba{
+display: inline-block; padding: 5px; background: #4D5159; font-size: 20px; color: blue; position: fixed; bottom: 0; right: 10px; cursor: pointer;
+}
+
+
+
+.centrarTexto{
+    text-align: center;
+      
+}
+
+.justificado{
+    text-align: justify;
+    
+   
+}
+
+.cuadro{
+    
+    padding:0px 8%;
+    
+}
+
+
+margenes{
+    margin: 25px 0px;
+}
+
+footer{
+   height: 200px;
+   margin-top: 100px;
+   padding-top: 10px;
+   background: #464646;
+   color: white;
+   font-family: 'Inconsolata';
+}
+
+li{
+    list-style: none;
+    font-size: 20px;
+}
+.margenesInt{
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+/* carousel ancho de la pagina*/
+.carousel .item {
+    width: 100%; 
+    max-height: 400px; 
+    min-height: 200px;
+}
+.carousel .item img {
+    width: 100%; 
+    max-height: 400px; 
+    min-height: 200px;
+}
+
+section{
+    padding-top: 60px;
+    padding-bottom:60px ;
+}
+
+article{
+    padding-top: 30px;
+    
+    
+}
+
+form{
+    padding-top: 60px;
+}
+
+header figure{
+    display: block;
+    float: left;
+}
+
+h1{
+    font-size: 40px;
+}
+
+.gris{
+    background: black;
+    
+}
+
+header nav div ul{
+    font-family: 'Titillium Web', sans-serif;
+}
+
+header nav div ul li a{
+    color: black;
+}
+
+div section h1{
+    font-family: 'Montserrat', sans-serif;
+}
+
+div section div p{
+    
+    font-family: 'Arvo', serif;
+}
+
+div section h1{
+    font-family: 'Montserrat', sans-serif;
+} 
+
+div section article{
+    font-family: 'Dosis', sans-serif;
+}
+
+.btn{
+    font-family: 'Quicksand', sans-serif;
+    text-transform: uppercase;
+    background: #FF4922;
+    color:white;
+    border: solid;
+    border: 1px;
+    border-color: #FE2D00;
+    width: 200px;
+}
+
+.btn:hover{
+    color: white;
+    background: #FF866C;
+}
+
+.margForm{
+    margin-bottom:20px;
+}
+
+.fondoContac{
+    background: url(../imagenes/Contacto.jpg);
+    background-repeat: no-repeat; 
+    
+    background-size: cover;
+    
+    padding-bottom: 40px; 
+    padding-top: 40px;
+}
+
+.boton{
+    background-color: transparent;
+    border-color: white;
+    padding:5px;
+    font-size: 20px
+}
+
